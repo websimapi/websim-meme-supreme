@@ -47,19 +47,19 @@ function App() {
           'Accept': 'application/json',
         },
         body: JSON.stringify({
-          prompt: `Generate a meme card with both a caption and an image description. The caption should be funny and meme-worthy, while the image description should be detailed enough to generate a funny/absurd meme image.
+          prompt: `Generate a meme card with both a caption and an image description. The caption should be funny and meme-worthy, while the image description should be detailed enough to generate a funny/absurd meme image. The type should be a creative category name for this specific meme (e.g. "Confused Professional", "Gaming Moment", "Pet Logic", etc).
 
           interface Response {
             caption: string;
             imageDescription: string;
-            type: "FORMAT" | "CAPTION";
+            type: string;
           }
 
           Example response:
           {
             "caption": "Me pretending to understand the meeting after zoning out for 20 minutes",
             "imageDescription": "A confused cat wearing business attire sitting at a desk with papers scattered everywhere, pretending to take notes while clearly having no idea what's happening",
-            "type": "FORMAT"
+            "type": "Office Space Chaos"
           }
           `,
         }),
