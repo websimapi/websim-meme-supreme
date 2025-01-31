@@ -2,6 +2,7 @@ const room = new WebsimSocket();
 
 function MemeCard({ card }) {
   const imageUrl = `https://images.websim.ai/1024x1024/${encodeURIComponent(card.imageDescription)}`;
+  const [isLoading, setIsLoading] = React.useState(true);
   
   return (
     <div className="card">
@@ -10,6 +11,8 @@ function MemeCard({ card }) {
         src={imageUrl}
         alt={card.imageDescription}
         loading="lazy"
+        className={isLoading ? 'loading' : ''}
+        onLoad={() => setIsLoading(false)}
       />
       <div className="card-text">
         <strong>{card.type === 'FORMAT' ? '🖼️ Format Card' : '📝 Caption Card'}</strong>
