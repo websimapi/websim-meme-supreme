@@ -14,7 +14,7 @@ function MemeCard({ card }) {
       <div className="card-text">
         <strong>{card.type === 'FORMAT' ? '🖼️ Format Card' : '📝 Caption Card'}</strong>
         <p>{card.caption}</p>
-        <small style={{color: '#888'}}>Created by: {card.username}</small>
+        <small style={{color: '#888'}}>ID: {card.id}</small>
       </div>
     </div>
   );
@@ -23,11 +23,15 @@ function MemeCard({ card }) {
 function App() {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [error, setError] = React.useState(null);
+  const [cards, setCards] = React.useState([]);
 
-  const cards = React.useSyncExternalStore(
-    room.collection('meme_card').subscribe,
-    () => room.collection('meme_card').getList()
-  );
+  // Subscribe to database changes
+  React.useEffect(() => {
+    const unsubscribe = room.collection('meme_card').subscribe((updatedCards) => {
+      setCards(updatedCards);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const generateNewCard = async () => {
     if (isGenerating) return;
@@ -67,11 +71,16 @@ function App() {
 
       const cardData = await response.json();
       
-      await room.collection('meme_card').create({
+      // Create new card in database
+      const newCard = await room.collection('meme_card').create({
         caption: cardData.caption,
         imageDescription: cardData.imageDescription,
-        type: cardData.type
+        type: cardData.type,
+        created_at: new Date().toISOString()
       });
+
+      // Update local state immediately
+      setCards(prevCards => [...prevCards, newCard]);
 
     } catch (error) {
       console.error('Error generating card:', error);
@@ -80,6 +89,11 @@ function App() {
       setIsGenerating(false);
     }
   };
+
+  // Sort cards by creation date, newest first
+  const sortedCards = React.useMemo(() => {
+    return [...cards].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }, [cards]);
 
   return (
     <div>
@@ -105,7 +119,7 @@ function App() {
       )}
 
       <div className="cards-container">
-        {cards.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((card) => (
+        {sortedCards.map((card) => (
           <MemeCard key={card.id} card={card} />
         ))}
       </div>
