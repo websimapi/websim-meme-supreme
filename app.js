@@ -2,7 +2,6 @@ const room = new WebsimSocket();
 
 function App() {
   const [isGenerating, setIsGenerating] = React.useState(false);
-  const [error, setError] = React.useState(null);
   const cards = React.useSyncExternalStore(
     room.collection('meme_card').subscribe,
     room.collection('meme_card').getList
@@ -11,7 +10,6 @@ function App() {
   const generateNewCard = async () => {
     if (isGenerating) return;
     setIsGenerating(true);
-    setError(null);
 
     try {
       const response = await fetch('/api/ai_completion', {
@@ -21,7 +19,7 @@ function App() {
           'Accept': 'application/json',
         },
         body: JSON.stringify({
-          prompt: `Generate a meme card with both a caption and an image description. The caption should be funny and meme-worthy, while the image description should be detailed enough to generate a funny/absurd meme image. Keep the image description relatively simple and focused on clear subjects.
+          prompt: `Generate a meme card with both a caption and an image description. The caption should be funny and meme-worthy, while the image description should be detailed enough to generate a funny/absurd meme image. Keep the image description concise but descriptive, focusing on key visual elements.
 
           interface Response {
             caption: string;
@@ -31,7 +29,7 @@ function App() {
 
           {
             "caption": "Me pretending to understand the meeting after zoning out for 20 minutes",
-            "imageDescription": "confused cat wearing business suit at desk",
+            "imageDescription": "confused cat wearing business suit at desk with scattered papers",
             "type": "FORMAT"
           }
           `,
@@ -52,34 +50,38 @@ function App() {
 
     } catch (error) {
       console.error('Error generating card:', error);
-      setError('Failed to generate card. Please try again.');
+      alert('Failed to generate card. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const renderImage = (card) => {
-    try {
-      return (
-        <img
-          key={card.id}
-          id={`img-${card.id}`}
-          src={`https://images.websim.ai/1024x1024/${encodeURIComponent(card.imageDescription)}`}
-          alt={card.imageDescription}
-          onError={(e) => {
-            e.target.onerror = null;  // Prevent infinite retry loop
-            e.target.src = `https://placehold.co/600x400/333/white?text=${encodeURIComponent('Failed to load image')}`;
-          }}
-        />
-      );
-    } catch (e) {
-      console.error('Error rendering image:', e);
-      return (
-        <div className="error-image">
-          Failed to load image
+  const MemeCard = ({ card }) => {
+    const [imageError, setImageError] = React.useState(false);
+    const imageUrl = `https://image.websim.ai/dalle/${encodeURIComponent(card.imageDescription)}`;
+
+    return (
+      <div className="card">
+        {!imageError ? (
+          <img
+            src={imageUrl}
+            alt={card.imageDescription}
+            onError={() => setImageError(true)}
+            loading="lazy"
+          />
+        ) : (
+          <div className="image-error">
+            <span>⚠️ Image failed to load</span>
+            <small>{card.imageDescription}</small>
+          </div>
+        )}
+        <div className="card-text">
+          <strong>{card.type === 'FORMAT' ? '🖼️ Format Card' : '📝 Caption Card'}</strong>
+          <p>{card.caption}</p>
+          <small style={{color: '#888'}}>Created by: {card.username}</small>
         </div>
-      );
-    }
+      </div>
+    );
   };
 
   return (
@@ -99,20 +101,9 @@ function App() {
         <div className="loading">Generating new meme card...</div>
       )}
 
-      {error && (
-        <div className="error-message">{error}</div>
-      )}
-
       <div className="cards-container">
         {cards.map((card) => (
-          <div key={card.id} className="card">
-            {renderImage(card)}
-            <div className="card-text">
-              <strong>{card.type === 'FORMAT' ? '🖼️ Format Card' : '📝 Caption Card'}</strong>
-              <p>{card.caption}</p>
-              <small style={{color: '#888'}}>Created by: {card.username}</small>
-            </div>
-          </div>
+          <MemeCard key={card.id} card={card} />
         ))}
       </div>
     </div>
