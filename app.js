@@ -1,15 +1,39 @@
 const room = new WebsimSocket();
 
+function MemeCard({ card }) {
+  const imageUrl = `https://images.websim.ai/1024x1024/${encodeURIComponent(card.imageDescription)}`;
+  
+  return (
+    <div className="card">
+      <img
+        id={`img-${card.id}`}
+        src={imageUrl}
+        alt={card.imageDescription}
+        loading="lazy"
+      />
+      <div className="card-text">
+        <strong>{card.type === 'FORMAT' ? '🖼️ Format Card' : '📝 Caption Card'}</strong>
+        <p>{card.caption}</p>
+        <small style={{color: '#888'}}>Created by: {card.username}</small>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [isGenerating, setIsGenerating] = React.useState(false);
+  const [error, setError] = React.useState(null);
+
   const cards = React.useSyncExternalStore(
     room.collection('meme_card').subscribe,
-    room.collection('meme_card').getList
+    () => room.collection('meme_card').getList()
   );
 
   const generateNewCard = async () => {
     if (isGenerating) return;
+    
     setIsGenerating(true);
+    setError(null);
 
     try {
       const response = await fetch('/api/ai_completion', {
@@ -19,7 +43,7 @@ function App() {
           'Accept': 'application/json',
         },
         body: JSON.stringify({
-          prompt: `Generate a meme card with both a caption and an image description. The caption should be funny and meme-worthy, while the image description should be detailed enough to generate a funny/absurd meme image. Keep the image description concise but descriptive, focusing on key visual elements.
+          prompt: `Generate a meme card with both a caption and an image description. The caption should be funny and meme-worthy, while the image description should be detailed enough to generate a funny/absurd meme image.
 
           interface Response {
             caption: string;
@@ -27,9 +51,10 @@ function App() {
             type: "FORMAT" | "CAPTION";
           }
 
+          Example response:
           {
             "caption": "Me pretending to understand the meeting after zoning out for 20 minutes",
-            "imageDescription": "confused cat wearing business suit at desk with scattered papers",
+            "imageDescription": "A confused cat wearing business attire sitting at a desk with papers scattered everywhere, pretending to take notes while clearly having no idea what's happening",
             "type": "FORMAT"
           }
           `,
@@ -37,7 +62,7 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate card content');
+        throw new Error('Failed to generate card');
       }
 
       const cardData = await response.json();
@@ -50,38 +75,10 @@ function App() {
 
     } catch (error) {
       console.error('Error generating card:', error);
-      alert('Failed to generate card. Please try again.');
+      setError('Failed to generate card. Please try again.');
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const MemeCard = ({ card }) => {
-    const [imageError, setImageError] = React.useState(false);
-    const imageUrl = `https://image.websim.ai/dalle/${encodeURIComponent(card.imageDescription)}`;
-
-    return (
-      <div className="card">
-        {!imageError ? (
-          <img
-            src={imageUrl}
-            alt={card.imageDescription}
-            onError={() => setImageError(true)}
-            loading="lazy"
-          />
-        ) : (
-          <div className="image-error">
-            <span>⚠️ Image failed to load</span>
-            <small>{card.imageDescription}</small>
-          </div>
-        )}
-        <div className="card-text">
-          <strong>{card.type === 'FORMAT' ? '🖼️ Format Card' : '📝 Caption Card'}</strong>
-          <p>{card.caption}</p>
-          <small style={{color: '#888'}}>Created by: {card.username}</small>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -98,11 +95,17 @@ function App() {
       </div>
       
       {isGenerating && (
-        <div className="loading">Generating new meme card...</div>
+        <div className="loading">
+          🎲 Generating new meme card...
+        </div>
+      )}
+
+      {error && (
+        <div className="error">{error}</div>
       )}
 
       <div className="cards-container">
-        {cards.map((card) => (
+        {cards.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((card) => (
           <MemeCard key={card.id} card={card} />
         ))}
       </div>
@@ -110,4 +113,7 @@ function App() {
   );
 }
 
-ReactDOM.render(<App />, document.getElementById('root'));
+// Create the root and render the app
+const rootElement = document.getElementById('root');
+const root = ReactDOM.createRoot(rootElement);
+root.render(<App />);
