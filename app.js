@@ -23,17 +23,12 @@ function MemeCard({ card }) {
 function App() {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [error, setError] = React.useState(null);
-  const [cards, setCards] = React.useState([]);
-  const [page, setPage] = React.useState(1);
-  const cardsPerPage = 100;
-
-  // Subscribe to database changes
-  React.useEffect(() => {
-    const unsubscribe = room.collection('meme_card').subscribe((updatedCards) => {
-      setCards(updatedCards);
-    });
-    return () => unsubscribe();
-  }, []);
+  
+  // Use React.useSyncExternalStore for more reliable state management
+  const cards = React.useSyncExternalStore(
+    React.useCallback((callback) => room.collection('meme_card').subscribe(callback), []),
+    React.useCallback(() => room.collection('meme_card').getList(), [])
+  );
 
   const generateNewCard = async () => {
     if (isGenerating) return;
@@ -74,15 +69,12 @@ function App() {
       const cardData = await response.json();
       
       // Create new card in database
-      const newCard = await room.collection('meme_card').create({
+      await room.collection('meme_card').create({
         caption: cardData.caption,
         imageDescription: cardData.imageDescription,
         type: cardData.type,
         created_at: new Date().toISOString()
       });
-
-      // Set page to 1 to show the newest card
-      setPage(1);
 
     } catch (error) {
       console.error('Error generating card:', error);
@@ -92,15 +84,10 @@ function App() {
     }
   };
 
-  // Sort cards by creation date, newest first and apply pagination
-  const paginatedCards = React.useMemo(() => {
-    const sorted = [...cards].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    const startIndex = (page - 1) * cardsPerPage;
-    const endIndex = page * cardsPerPage;
-    return sorted.slice(startIndex, endIndex);
-  }, [cards, page]);
-
-  const totalPages = Math.ceil(cards.length / cardsPerPage);
+  // Sort cards by creation date, newest first
+  const sortedCards = React.useMemo(() => {
+    return [...cards].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }, [cards]);
 
   return (
     <div>
@@ -126,14 +113,14 @@ function App() {
       )}
 
       <div className="cards-container">
-        {paginatedCards.map((card) => (
+        {sortedCards.map((card) => (
           <MemeCard key={card.id} card={card} />
         ))}
-      </div>
-
-      <div className="stats">
-        Showing latest {Math.min(cardsPerPage, cards.length)} cards
-        {cards.length > cardsPerPage && ` (${cards.length} total)`}
+        {sortedCards.length === 0 && !isGenerating && (
+          <div className="no-cards">
+            No cards yet! Click the generate button to create your first meme card.
+          </div>
+        )}
       </div>
     </div>
   );
