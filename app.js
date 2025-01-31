@@ -1,8 +1,7 @@
 const room = new WebsimSocket();
 
 function MemeCard({ card }) {
-  // Create an image element with unique id and set its src/alt to the exact prompt from the LLM response
-  // Previously we used a service URL; now we use the raw imageDescription prompt as the src per the latest instructions.
+  // Render an image element with a unique id, using the LLM-generated image description for both src and alt
   return (
     <div className="card">
       <img
@@ -25,8 +24,18 @@ function App() {
   const [error, setError] = React.useState(null);
   const [cards, setCards] = React.useState([]);
 
-  // Subscribe to database changes and update the local cards state
+  // Fetch initial list of cards and subscribe to database changes
   React.useEffect(() => {
+    const fetchCards = async () => {
+      try {
+        const initialCards = await room.collection('meme_card').getList();
+        setCards(initialCards);
+      } catch (err) {
+        console.error('Error fetching initial meme cards:', err);
+      }
+    };
+    fetchCards();
+
     const unsubscribe = room.collection('meme_card').subscribe((updatedCards) => {
       setCards(updatedCards);
     });
@@ -60,8 +69,7 @@ Example response:
   "caption": "Me pretending to understand the meeting after zoning out for 20 minutes",
   "imageDescription": "A confused cat wearing business attire sitting at a desk with papers scattered everywhere, pretending to take notes while clearly having no idea what's happening",
   "type": "Office Space Chaos"
-}
-          `
+}`
         })
       });
 
@@ -71,7 +79,7 @@ Example response:
 
       const cardData = await response.json();
       
-      // Create new card in the database
+      // Create new card in the database using the LLM generated information
       const newCard = await room.collection('meme_card').create({
         caption: cardData.caption,
         imageDescription: cardData.imageDescription,
@@ -79,7 +87,7 @@ Example response:
         created_at: new Date().toISOString()
       });
 
-      // Update local state immediately
+      // Update local state immediately with the new card
       setCards(prevCards => [...prevCards, newCard]);
 
     } catch (error) {
