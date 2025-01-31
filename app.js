@@ -12,7 +12,7 @@ function MemeCard({ card }) {
         loading="lazy"
       />
       <div className="card-text">
-        <strong>{card.type === 'FORMAT' ? '🖼️ Format Card' : '📝 Caption Card'}</strong>
+        <strong>{card.type}</strong>
         <p>{card.caption}</p>
         <small style={{color: '#888'}}>ID: {card.id}</small>
       </div>
