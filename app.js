@@ -24,6 +24,8 @@ function App() {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [cards, setCards] = React.useState([]);
+  const [page, setPage] = React.useState(1);
+  const cardsPerPage = 100;
 
   // Subscribe to database changes
   React.useEffect(() => {
@@ -79,8 +81,8 @@ function App() {
         created_at: new Date().toISOString()
       });
 
-      // Update local state immediately
-      setCards(prevCards => [...prevCards, newCard]);
+      // Set page to 1 to show the newest card
+      setPage(1);
 
     } catch (error) {
       console.error('Error generating card:', error);
@@ -90,10 +92,15 @@ function App() {
     }
   };
 
-  // Sort cards by creation date, newest first
-  const sortedCards = React.useMemo(() => {
-    return [...cards].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }, [cards]);
+  // Sort cards by creation date, newest first and apply pagination
+  const paginatedCards = React.useMemo(() => {
+    const sorted = [...cards].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const startIndex = (page - 1) * cardsPerPage;
+    const endIndex = page * cardsPerPage;
+    return sorted.slice(startIndex, endIndex);
+  }, [cards, page]);
+
+  const totalPages = Math.ceil(cards.length / cardsPerPage);
 
   return (
     <div>
@@ -119,9 +126,14 @@ function App() {
       )}
 
       <div className="cards-container">
-        {sortedCards.map((card) => (
+        {paginatedCards.map((card) => (
           <MemeCard key={card.id} card={card} />
         ))}
+      </div>
+
+      <div className="stats">
+        Showing latest {Math.min(cardsPerPage, cards.length)} cards
+        {cards.length > cardsPerPage && ` (${cards.length} total)`}
       </div>
     </div>
   );
