@@ -24,10 +24,10 @@ function App() {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [error, setError] = React.useState(null);
   
-  // Use React.useSyncExternalStore for more reliable state management
+  // Subscribe to the meme_card collection
   const cards = React.useSyncExternalStore(
-    React.useCallback((callback) => room.collection('meme_card').subscribe(callback), []),
-    React.useCallback(() => room.collection('meme_card').getList(), [])
+    (callback) => room.collection('meme_card').subscribe(callback),
+    () => room.collection('meme_card').getList()
   );
 
   const generateNewCard = async () => {
@@ -73,7 +73,6 @@ function App() {
         caption: cardData.caption,
         imageDescription: cardData.imageDescription,
         type: cardData.type,
-        created_at: new Date().toISOString()
       });
 
     } catch (error) {
@@ -86,8 +85,13 @@ function App() {
 
   // Sort cards by creation date, newest first
   const sortedCards = React.useMemo(() => {
-    return [...cards].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    if (!cards) return [];
+    return [...cards].sort((a, b) => 
+      new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
   }, [cards]);
+
+  console.log('Current cards:', sortedCards); // Debug log
 
   return (
     <div>
@@ -113,10 +117,11 @@ function App() {
       )}
 
       <div className="cards-container">
-        {sortedCards.map((card) => (
-          <MemeCard key={card.id} card={card} />
-        ))}
-        {sortedCards.length === 0 && !isGenerating && (
+        {sortedCards && sortedCards.length > 0 ? (
+          sortedCards.map((card) => (
+            <MemeCard key={card.id} card={card} />
+          ))
+        ) : (
           <div className="no-cards">
             No cards yet! Click the generate button to create your first meme card.
           </div>
